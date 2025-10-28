@@ -1030,7 +1030,7 @@ function endGame(world: World, player: Player, won: boolean, message: string) {
     });
   }
 
-  // Offer restart after delay
+  // Offer restart after delay (10 seconds total to view leaderboard)
   setTimeout(() => {
     world.chatManager.sendPlayerMessage(player, 'Restarting in 3 seconds...', 'FFFF00');
 
@@ -1053,7 +1053,7 @@ function endGame(world: World, player: Player, won: boolean, message: string) {
 
       world.chatManager.sendPlayerMessage(player, 'Game restarted! Good luck!', '00FF00');
     }, 3000);
-  }, 2000);
+  }, 7000);
 }
 
 // ============================================================================
