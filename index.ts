@@ -100,6 +100,14 @@ startServer(world => {
   // Enable debug rendering if needed (disable for production)
   // world.simulation.enableDebugRendering(true);
 
+  // Set spooky nighttime atmosphere with custom space skybox
+  world.setSkyboxUri('skyboxes/space'); // Load custom space skybox
+  world.setSkyboxIntensity(0.3); // Adjust brightness for space skybox
+  world.setAmbientLightIntensity(0.25); // Dark ambient lighting
+  world.setAmbientLightColor({ r: 40, g: 40, b: 70 }); // Dark blue tint
+  world.setDirectionalLightIntensity(0.15); // Dim moonlight
+  world.setDirectionalLightColor({ r: 60, g: 60, b: 100 }); // Cool moonlight
+
   // Spawn keys in the world
   spawnKeys(world);
 
@@ -189,7 +197,7 @@ startServer(world => {
 
   // Ambient music
   new Audio({
-    uri: 'audio/music/hytopia-main.mp3',
+    uri: 'audio/music/haunted-ambience.mp3',
     loop: true,
     volume: 0.05, // Lower volume for spooky atmosphere
   }).play(world);
@@ -205,9 +213,11 @@ function spawnKeys(world: World) {
   KEY_POSITIONS.forEach((pos, index) => {
     const key = new Entity({
       name: `Key_${index + 1}`,
-      // Using a glowing gold block as a key
-      blockTextureUri: 'blocks/gold-block.png',
-      blockHalfExtents: { x: 0.3, y: 0.3, z: 0.3 },
+      // Using creepy eye model as collectible keys - very horror themed!
+      modelUri: 'models/items/creepy-eye.gltf',
+      modelScale: 2.5, // Larger for better visibility
+      modelEmissiveIntensity: 2.0, // Make it glow bright red
+      tintColor: { r: 255, g: 100, b: 100 }, // Bright red tint for visibility
       rigidBodyOptions: {
         type: RigidBodyType.KINEMATIC_POSITION,
       },
@@ -215,8 +225,8 @@ function spawnKeys(world: World) {
 
     key.spawn(world, pos);
 
-    // Make key rotate
-    key.rotationVelocity = { x: 0, y: 2, z: 0 };
+    // Make key rotate slowly for spooky effect
+    key.rotationVelocity = { x: 0, y: 1, z: 0 };
 
     // Handle key pickup
     key.on(EntityEvent.ENTITY_COLLISION, ({ otherEntity, started }) => {
