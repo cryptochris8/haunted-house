@@ -1,12 +1,3 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Haunted Castle HUD</title>
-</head>
-<body>
-
 <!-- HAUNTED CASTLE HUD -->
 <div class="haunted-hud">
   <div class="hud-timer" id="timer">5:00</div>
@@ -335,15 +326,12 @@
   mobileJumpButton.addEventListener('touchstart', e => {
     e.preventDefault();
     mobileJumpButton.classList.add('active');
-    hytopia.pressInput(' ', true);
+    hytopia.pressInput('sp', true);
   });
 
   mobileJumpButton.addEventListener('touchend', e => {
     e.preventDefault();
     mobileJumpButton.classList.remove('active');
-    hytopia.pressInput(' ', false);
+    hytopia.pressInput('sp', false);
   });
 </script>
-
-</body>
-</html>

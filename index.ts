@@ -17,6 +17,7 @@ import {
   RigidBodyType,
   World,
   Player,
+  ParticleEmitter,
   type Vec3,
 } from 'hytopia';
 
@@ -117,6 +118,15 @@ startServer(world => {
   // Spawn the zombie
   spawnZombie(world);
 
+  // Spawn atmospheric decorations
+  spawnDecorativeSkeletons(world);
+  spawnFlyingBats(world);
+  spawnDecorativeSpiders(world);
+  spawnAtmosphericSmoke(world);
+
+  // Create escape doorway openings
+  createEscapeDoorways(world);
+
   // Create win zone trigger
   createWinZone(world);
 
@@ -211,6 +221,7 @@ startServer(world => {
 
 function spawnKeys(world: World) {
   KEY_POSITIONS.forEach((pos, index) => {
+    // Create visual key model
     const key = new Entity({
       name: `Key_${index + 1}`,
       // Using creepy eye model as collectible keys - very horror themed!
@@ -228,8 +239,22 @@ function spawnKeys(world: World) {
     // Make key rotate slowly for spooky effect
     key.rotationVelocity = { x: 0, y: 1, z: 0 };
 
-    // Handle key pickup
-    key.on(EntityEvent.ENTITY_COLLISION, ({ otherEntity, started }) => {
+    // Create invisible collision trigger for reliable pickup detection
+    const keyTrigger = new Entity({
+      name: `Key_Trigger_${index + 1}`,
+      // Invisible collision sphere around the key
+      modelUri: 'models/items/creepy-eye.gltf',
+      modelScale: 3.0, // Slightly larger than visual key
+      modelOpacity: 0, // Make it invisible
+      rigidBodyOptions: {
+        type: RigidBodyType.SENSOR, // Sensor type for trigger detection
+      },
+    });
+
+    keyTrigger.spawn(world, pos);
+
+    // Handle key pickup on the trigger (more reliable than model collision)
+    keyTrigger.on(EntityEvent.ENTITY_COLLISION, ({ otherEntity, started }) => {
       if (!started) return;
 
       // Check if collided with player entity
@@ -241,7 +266,10 @@ function spawnKeys(world: World) {
         if (!state.gameOver && state.keysCollected < gameConfig.totalKeys) {
           // Collect key
           state.keysCollected++;
+
+          // Despawn both visual key and trigger
           key.despawn();
+          keyTrigger.despawn();
 
           // Play pickup sound
           new Audio({
@@ -276,13 +304,258 @@ function spawnKeys(world: World) {
 }
 
 // ============================================================================
+// DECORATIVE ATMOSPHERIC ENTITIES
+// ============================================================================
+
+function spawnDecorativeSkeletons(world: World) {
+  // Skeleton positions near each key for spooky atmosphere
+  const skeletonPositions: Vec3[] = [
+    // Near Key 1 - Position: x:43.6, y:33.8, z:-7.2
+    { x: 41.5, y: 33.8, z: -8.0 },
+    { x: 45.0, y: 33.8, z: -6.5 },
+
+    // Near Key 2 - Position: x:-30.0, y:45.8, z:2.1
+    { x: -32.0, y: 45.8, z: 1.0 },
+    { x: -28.5, y: 45.8, z: 3.5 },
+
+    // Near Key 3 - Position: x:20.7, y:57.8, z:13.5
+    { x: 19.0, y: 57.8, z: 12.0 },
+    { x: 22.5, y: 57.8, z: 15.0 },
+  ];
+
+  skeletonPositions.forEach((pos, index) => {
+    const skeleton = new Entity({
+      name: `Decorative_Skeleton_${index + 1}`,
+      modelUri: 'models/npcs/skeleton.gltf',
+      modelScale: 0.9, // Slightly smaller for decoration
+      modelLoopedAnimations: ['walk'], // Walking animation
+      modelEmissiveIntensity: 0.3, // Subtle glow
+      tintColor: { r: 180, g: 180, b: 200 }, // Pale bone color
+      rigidBodyOptions: {
+        type: RigidBodyType.KINEMATIC_VELOCITY, // Moves but not affected by physics
+      },
+    });
+
+    skeleton.spawn(world, pos);
+
+    // Make skeleton intangible (no collision with player)
+    skeleton.setCollisionGroupsForSolidColliders({
+      belongsTo: [],
+      collidesWith: [],
+    });
+
+    // Give skeleton slow random wandering movement
+    const changeDirection = () => {
+      if (skeleton.isSpawned) {
+        const randomAngle = Math.random() * Math.PI * 2;
+        const speed = 0.3 + Math.random() * 0.2; // Very slow (0.3-0.5)
+        skeleton.setLinearVelocity({
+          x: Math.cos(randomAngle) * speed,
+          y: 0,
+          z: Math.sin(randomAngle) * speed,
+        });
+      }
+    };
+
+    // Initial movement
+    changeDirection();
+
+    // Change direction every 8-12 seconds for slow wandering
+    setInterval(() => {
+      changeDirection();
+    }, 8000 + Math.random() * 4000);
+
+    console.log(`💀 Spawned wandering skeleton at x:${pos.x}, y:${pos.y}, z:${pos.z}`);
+  });
+}
+
+function spawnFlyingBats(world: World) {
+  // Bat flight paths throughout the castle
+  const batPaths: { start: Vec3; velocity: Vec3 }[] = [
+    // Bat 1 - Flying through middle stairway
+    {
+      start: { x: 10, y: 45, z: 5 },
+      velocity: { x: -1.5, y: 0.2, z: 1.8 }
+    },
+    // Bat 2 - Circling right tower
+    {
+      start: { x: 50, y: 40, z: -20 },
+      velocity: { x: -1.2, y: 0.3, z: -1.5 }
+    },
+    // Bat 3 - Flying through left area
+    {
+      start: { x: -35, y: 50, z: 10 },
+      velocity: { x: 1.8, y: -0.2, z: -1.3 }
+    },
+    // Bat 4 - High tower area
+    {
+      start: { x: 20, y: 62, z: 30 },
+      velocity: { x: 1.0, y: -0.3, z: -1.7 }
+    },
+    // Bat 5 - Lower entrance area
+    {
+      start: { x: 0, y: 25, z: -40 },
+      velocity: { x: 1.5, y: 0.4, z: 1.2 }
+    },
+  ];
+
+  batPaths.forEach((batPath, index) => {
+    const bat = new Entity({
+      name: `Flying_Bat_${index + 1}`,
+      modelUri: 'models/npcs/bat.gltf',
+      modelScale: 1.2,
+      modelLoopedAnimations: ['fly'], // Flying animation
+      rigidBodyOptions: {
+        type: RigidBodyType.KINEMATIC_VELOCITY,
+        linearVelocity: batPath.velocity,
+      },
+    });
+
+    bat.spawn(world, batPath.start);
+
+    // Make bat change direction randomly every 5-8 seconds for organic movement
+    setInterval(() => {
+      if (bat.isSpawned) {
+        const randomAngle = Math.random() * Math.PI * 2;
+        const speed = 1.5 + Math.random() * 0.5;
+        bat.setLinearVelocity({
+          x: Math.cos(randomAngle) * speed,
+          y: (Math.random() - 0.5) * 0.6,
+          z: Math.sin(randomAngle) * speed,
+        });
+      }
+    }, 5000 + Math.random() * 3000);
+
+    console.log(`🦇 Spawned flying bat at x:${batPath.start.x}, y:${batPath.start.y}, z:${batPath.start.z}`);
+  });
+}
+
+function spawnDecorativeSpiders(world: World) {
+  // Spider positions in dark corners and near keys for creepy atmosphere
+  const spiderPositions: Vec3[] = [
+    // Near Key 1 - Position: x:43.6, y:33.8, z:-7.2
+    { x: 42.5, y: 33.8, z: -8.5 },
+    { x: 44.8, y: 33.8, z: -6.0 },
+
+    // Near Key 2 - Position: x:-30.0, y:45.8, z:2.1
+    { x: -31.5, y: 45.8, z: 0.8 },
+    { x: -28.8, y: 45.8, z: 3.2 },
+
+    // Near Key 3 - Position: x:20.7, y:57.8, z:13.5
+    { x: 19.5, y: 57.8, z: 12.5 },
+    { x: 21.8, y: 57.8, z: 14.8 },
+  ];
+
+  spiderPositions.forEach((pos, index) => {
+    const spider = new Entity({
+      name: `Decorative_Spider_${index + 1}`,
+      modelUri: 'models/npcs/spider.gltf',
+      modelScale: 0.6, // Smaller, creepier
+      modelLoopedAnimations: ['walk'], // Walking animation
+      rigidBodyOptions: {
+        type: RigidBodyType.KINEMATIC_VELOCITY, // Moves but not affected by physics
+      },
+    });
+
+    spider.spawn(world, pos);
+
+    // Make spider intangible (no collision with player)
+    spider.setCollisionGroupsForSolidColliders({
+      belongsTo: [],
+      collidesWith: [],
+    });
+
+    // Give spider slow creepy crawling movement
+    const changeDirection = () => {
+      if (spider.isSpawned) {
+        const randomAngle = Math.random() * Math.PI * 2;
+        const speed = 0.2 + Math.random() * 0.15; // Very slow crawling (0.2-0.35)
+        spider.setLinearVelocity({
+          x: Math.cos(randomAngle) * speed,
+          y: 0,
+          z: Math.sin(randomAngle) * speed,
+        });
+      }
+    };
+
+    // Initial movement
+    changeDirection();
+
+    // Change direction every 6-10 seconds for creepy crawling
+    setInterval(() => {
+      changeDirection();
+    }, 6000 + Math.random() * 4000);
+
+    console.log(`🕷️ Spawned crawling spider at x:${pos.x}, y:${pos.y}, z:${pos.z}`);
+  });
+}
+
+function spawnAtmosphericSmoke(world: World) {
+  // Eerie green fog near zombie spawn
+  const zombieSmoke = new ParticleEmitter({
+    textureUri: 'particles/smoke.png',
+    colorStart: { r: 100, g: 200, b: 100 }, // Eerie green
+    colorEnd: { r: 50, g: 100, b: 50 },
+    opacityStart: 0.4,
+    opacityEnd: 0,
+    sizeStart: 2,
+    sizeEnd: 8,
+    lifetime: 6,
+    lifetimeVariance: 2,
+    rate: 15,
+    position: { x: 5.1, y: 22, z: -3.9 }, // Zombie spawn area
+    velocity: { x: 0, y: 1, z: 0 },
+    velocityVariance: { x: 0.5, y: 0.3, z: 0.5 },
+  });
+  zombieSmoke.spawn(world);
+
+  // Dark smoke near the gate
+  const gateSmoke = new ParticleEmitter({
+    textureUri: 'particles/smoke.png',
+    colorStart: { r: 80, g: 80, b: 90 }, // Dark gray
+    colorEnd: { r: 40, g: 40, b: 50 },
+    opacityStart: 0.5,
+    opacityEnd: 0,
+    sizeStart: 3,
+    sizeEnd: 10,
+    lifetime: 8,
+    lifetimeVariance: 3,
+    rate: 10,
+    position: { x: 5.2, y: 22, z: -15.8 }, // Gate area
+    velocity: { x: 0, y: 0.8, z: 0 },
+    velocityVariance: { x: 0.8, y: 0.4, z: 0.8 },
+  });
+  gateSmoke.spawn(world);
+
+  // Mystical purple fog near stairwell
+  const stairwellSmoke = new ParticleEmitter({
+    textureUri: 'particles/magic.png',
+    colorStart: { r: 150, g: 100, b: 200 }, // Purple mystical
+    colorEnd: { r: 100, g: 50, b: 150 },
+    opacityStart: 0.3,
+    opacityEnd: 0,
+    sizeStart: 1.5,
+    sizeEnd: 6,
+    lifetime: 7,
+    lifetimeVariance: 2,
+    rate: 8,
+    position: { x: 6, y: 35, z: 10 }, // Mid stairway
+    velocity: { x: 0, y: 1.2, z: 0 },
+    velocityVariance: { x: 0.6, y: 0.5, z: 0.6 },
+  });
+  stairwellSmoke.spawn(world);
+
+  console.log(`💨 Spawned 3 atmospheric smoke/fog emitters throughout the castle`);
+}
+
+// ============================================================================
 // GATE SPAWNING
 // ============================================================================
 
 function spawnGate(world: World) {
   const gate = new Entity({
     name: 'Castle_Gate',
-    blockTextureUri: 'blocks/iron-bars.png',
+    blockTextureUri: 'blocks/oak-log',
     blockHalfExtents: { x: 2, y: 3, z: 0.2 },
     rigidBodyOptions: {
       type: RigidBodyType.FIXED,
@@ -310,6 +583,11 @@ function spawnGate(world: World) {
 // ============================================================================
 // ZOMBIE AI
 // ============================================================================
+
+// Track last time proximity sound played for each player (to prevent spam)
+const zombieProximitySoundCooldown = new Map<string, number>();
+const PROXIMITY_SOUND_COOLDOWN_MS = 8000; // Play sound every 8 seconds max
+const PROXIMITY_DISTANCE = 12; // Play sound when zombie is within 12 blocks
 
 function spawnZombie(world: World) {
   const zombie = new Entity({
@@ -361,6 +639,24 @@ function spawnZombie(world: World) {
           nearestDistance = distance;
           nearestPlayer = playerEntity.player;
           nearestPlayerEntity = playerEntity;
+        }
+
+        // Play proximity sound if zombie is within 12 blocks
+        if (distance < PROXIMITY_DISTANCE) {
+          const playerId = playerEntity.player.id;
+          const now = Date.now();
+          const lastPlayTime = zombieProximitySoundCooldown.get(playerId) || 0;
+
+          // Only play if cooldown has elapsed
+          if (now - lastPlayTime > PROXIMITY_SOUND_COOLDOWN_MS) {
+            new Audio({
+              uri: 'sounds/sfx/Zombie.wav',
+              volume: Math.max(0.3, 1.0 - (distance / PROXIMITY_DISTANCE)), // Louder when closer
+              position: zombie.position,
+            }).play(world);
+
+            zombieProximitySoundCooldown.set(playerId, now);
+          }
         }
       }
     }
@@ -461,25 +757,53 @@ function catchPlayer(world: World, player: Player, zombie: Entity) {
 }
 
 // ============================================================================
+// ESCAPE DOORWAYS
+// ============================================================================
+
+function createEscapeDoorways(world: World) {
+  // Doorway near first key stairwell - players getting stuck at x:44.4, y:21.8, z:-18.7
+  // Create a 2-block wide, 3-block tall doorway opening
+  const doorway1Center = { x: 44, y: 22, z: -19 };
+
+  console.log(`🚪 Creating escape doorway near first key stairwell...`);
+
+  // Clear blocks for doorway (2 wide x 3 tall)
+  for (let dy = 0; dy < 3; dy++) {  // 3 blocks tall
+    for (let dx = 0; dx < 2; dx++) { // 2 blocks wide
+      const blockPos = {
+        x: doorway1Center.x + dx,
+        y: doorway1Center.y + dy,
+        z: doorway1Center.z
+      };
+
+      // Remove block (set to 0 = air)
+      world.chunkLattice.setBlock(blockPos, 0);
+    }
+  }
+
+  console.log(`✓ Escape doorway created at x:${doorway1Center.x}, y:${doorway1Center.y}, z:${doorway1Center.z}`);
+}
+
+// ============================================================================
 // WIN ZONE
 // ============================================================================
 
 function createWinZone(world: World) {
-  const winZone = new Entity({
-    name: 'Win_Zone',
-    blockTextureUri: 'blocks/glass.png',
-    blockHalfExtents: WIN_ZONE_SIZE,
+  // Create a sandy/golden victory platform
+  const winPlatform = new Entity({
+    name: 'Win_Platform',
+    blockTextureUri: 'blocks/sand.png',
+    blockHalfExtents: { x: 2, y: 0.2, z: 2 }, // Thin 4x4 platform
     rigidBodyOptions: {
       type: RigidBodyType.FIXED,
-      isSensor: true,
+      isSensor: true, // Trigger so player can detect win
     },
   });
 
-  winZone.spawn(world, WIN_ZONE_POSITION);
-  winZone.visible = false; // Invisible trigger
+  winPlatform.spawn(world, WIN_ZONE_POSITION);
 
   // Check for players entering win zone
-  winZone.on(EntityEvent.ENTITY_COLLISION, ({ otherEntity, started }) => {
+  winPlatform.on(EntityEvent.ENTITY_COLLISION, ({ otherEntity, started }) => {
     if (!started) return;
 
     const playerEntity = otherEntity as any;
@@ -498,6 +822,8 @@ function createWinZone(world: World) {
       }
     }
   });
+
+  console.log('🏁 Sandy victory platform created at gate exit');
 }
 
 // ============================================================================
