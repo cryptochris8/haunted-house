@@ -226,17 +226,8 @@ startServer(world => {
     // Load UI
     player.ui.load('ui/index.html');
 
-    // Send initial HUD data
+    // Send initial HUD data (but don't start timer yet)
     updatePlayerHUD(player);
-
-    // Welcome messages
-    world.chatManager.sendPlayerMessage(player, '🏰 Welcome to the Haunted Castle!', 'FF0000');
-    world.chatManager.sendPlayerMessage(player, '🔑 Collect 3 keys to unlock the gate', 'FFAA00');
-    world.chatManager.sendPlayerMessage(player, '🧟 Avoid the zombie! You have 3 lives', 'FF00FF');
-    world.chatManager.sendPlayerMessage(player, '⏱️ You have 5 minutes to escape!', 'FF0000');
-
-    // Start player timer
-    startPlayerTimer(world, player);
 
     // DEBUG: Show player position every 2 seconds
     const positionLogger = setInterval(() => {
@@ -255,6 +246,20 @@ startServer(world => {
 
     // Handle UI interactions
     player.ui.on(PlayerUIEvent.DATA, ({ data }) => {
+      if (data.type === 'start-game') {
+        // Player clicked "Enter the Castle" button
+        console.log(`${player.username} started the game`);
+
+        // Welcome messages
+        world.chatManager.sendPlayerMessage(player, '🏰 Welcome to the Haunted Castle!', 'FF0000');
+        world.chatManager.sendPlayerMessage(player, '🔑 Collect 3 keys to unlock the gate', 'FFAA00');
+        world.chatManager.sendPlayerMessage(player, '🧟 Avoid the zombie! You have 3 lives', 'FF00FF');
+        world.chatManager.sendPlayerMessage(player, '⏱️ You have 5 minutes to escape!', 'FF0000');
+
+        // Start the timer
+        startPlayerTimer(world, player);
+      }
+
       if (data.action === 'interact_key') {
         // Key pickup handled by entity collision
       }
@@ -1032,26 +1037,23 @@ function endGame(world: World, player: Player, won: boolean, message: string) {
 
   // Offer restart after delay (10 seconds total to view leaderboard)
   setTimeout(() => {
-    world.chatManager.sendPlayerMessage(player, 'Restarting in 3 seconds...', 'FFFF00');
+    world.chatManager.sendPlayerMessage(player, 'Ready for another round?', 'FFFF00');
 
     setTimeout(() => {
       // Reset player state
       playerStates.delete(player.id);
       const newState = getPlayerState(player);
 
-      // Respawn player
+      // Respawn player at start
       const playerEntities = world.entityManager.getPlayerEntitiesByPlayer(player);
       if (playerEntities.length > 0) {
         playerEntities[0].setPosition({ x: 13, y: 22, z: -56 });
       }
 
-      // Update HUD
+      // Update HUD (timer will start when player clicks "Enter the Castle" again)
       updatePlayerHUD(player);
 
-      // Restart timer
-      startPlayerTimer(world, player);
-
-      world.chatManager.sendPlayerMessage(player, 'Game restarted! Good luck!', '00FF00');
+      world.chatManager.sendPlayerMessage(player, 'Click "Enter the Castle" to play again!', '00FF00');
     }, 3000);
   }, 7000);
 }

@@ -1,5 +1,28 @@
+<!-- OPENING SCREEN -->
+<div class="opening-screen" id="opening-screen">
+  <div class="opening-content">
+    <img src="assets/ui/logos/logo.png" alt="Haunted Castle" class="game-logo" />
+
+    <div class="instructions">
+      <h3>How to Play</h3>
+      <p>🔑 Collect 3 keys hidden throughout the castle</p>
+      <p>🚪 Unlock the gate and escape to the drawbridge</p>
+      <p>🧟 Avoid the Warden - you have 3 lives</p>
+      <p>⏱️ Complete the escape in 5 minutes</p>
+    </div>
+
+    <div class="controls-info">
+      <span>WASD: Move</span>
+      <span>SHIFT: Sprint</span>
+      <span>E: Interact</span>
+    </div>
+
+    <button class="start-button" id="start-button">ENTER THE CASTLE</button>
+  </div>
+</div>
+
 <!-- HAUNTED CASTLE HUD -->
-<div class="haunted-hud">
+<div class="haunted-hud" id="game-hud" style="display: none;">
   <div class="hud-timer" id="timer">5:00</div>
   <div class="hud-keys" id="keys">
     <span class="key-icon">🔑</span>
@@ -51,6 +74,141 @@
   body {
     font-family: 'Trebuchet MS', 'Arial', sans-serif;
     overflow: hidden;
+  }
+
+  /* ========== OPENING SCREEN ========== */
+  .opening-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.95);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 3000;
+    animation: fadeIn 0.5s ease;
+  }
+
+  .opening-content {
+    text-align: center;
+    padding: 50px;
+    background: linear-gradient(to bottom, rgba(40, 0, 0, 0.95), rgba(20, 0, 0, 0.95));
+    border: 4px solid rgba(139, 0, 0, 0.8);
+    border-radius: 16px;
+    box-shadow:
+      0 0 40px rgba(139, 0, 0, 1),
+      inset 0 0 30px rgba(255, 0, 0, 0.2);
+    max-width: 700px;
+  }
+
+  .game-logo {
+    width: 500px;
+    max-width: 90%;
+    height: auto;
+    margin-bottom: 30px;
+    filter: drop-shadow(0 0 20px rgba(139, 0, 0, 0.8));
+    animation: logoGlow 2s infinite alternate;
+  }
+
+  @keyframes logoGlow {
+    from {
+      filter: drop-shadow(0 0 20px rgba(139, 0, 0, 0.8));
+    }
+    to {
+      filter: drop-shadow(0 0 30px rgba(255, 0, 0, 0.9));
+    }
+  }
+
+  .instructions {
+    margin: 30px 0;
+    padding: 20px;
+    background: rgba(0, 0, 0, 0.5);
+    border: 2px solid rgba(139, 0, 0, 0.4);
+    border-radius: 12px;
+  }
+
+  .instructions h3 {
+    font-size: 28px;
+    color: #ffd700;
+    text-shadow:
+      0 0 10px rgba(255, 215, 0, 0.8),
+      2px 2px 4px rgba(0, 0, 0, 0.9);
+    margin-bottom: 15px;
+  }
+
+  .instructions p {
+    font-size: 18px;
+    color: #ffffff;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9);
+    margin: 10px 0;
+    line-height: 1.6;
+  }
+
+  .controls-info {
+    display: flex;
+    justify-content: center;
+    gap: 25px;
+    margin: 25px 0;
+    flex-wrap: wrap;
+  }
+
+  .controls-info span {
+    font-size: 16px;
+    color: #cccccc;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.9);
+    padding: 8px 16px;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(139, 0, 0, 0.3);
+    border-radius: 8px;
+  }
+
+  .start-button {
+    font-size: 32px;
+    font-weight: bold;
+    color: #ffd700;
+    background: linear-gradient(to bottom, rgba(60, 0, 0, 0.9), rgba(30, 0, 0, 0.9));
+    border: 3px solid rgba(139, 0, 0, 0.8);
+    border-radius: 12px;
+    padding: 20px 50px;
+    cursor: pointer;
+    text-shadow:
+      0 0 10px rgba(255, 215, 0, 0.8),
+      2px 2px 4px rgba(0, 0, 0, 0.9);
+    box-shadow:
+      0 0 20px rgba(139, 0, 0, 0.8),
+      inset 0 0 20px rgba(255, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    animation: buttonPulse 2s infinite;
+    margin-top: 20px;
+  }
+
+  .start-button:hover {
+    background: linear-gradient(to bottom, rgba(80, 0, 0, 1), rgba(40, 0, 0, 1));
+    border-color: rgba(255, 0, 0, 0.9);
+    box-shadow:
+      0 0 30px rgba(255, 0, 0, 1),
+      inset 0 0 30px rgba(255, 0, 0, 0.2);
+    transform: scale(1.05);
+    color: #ffff00;
+  }
+
+  .start-button:active {
+    transform: scale(0.98);
+  }
+
+  @keyframes buttonPulse {
+    0%, 100% {
+      box-shadow:
+        0 0 20px rgba(139, 0, 0, 0.8),
+        inset 0 0 20px rgba(255, 0, 0, 0.1);
+    }
+    50% {
+      box-shadow:
+        0 0 30px rgba(255, 0, 0, 1),
+        inset 0 0 30px rgba(255, 0, 0, 0.2);
+    }
   }
 
   /* ========== HAUNTED CASTLE HUD ========== */
@@ -333,6 +491,37 @@
 
   /* ========== RESPONSIVE ========== */
   @media (max-width: 768px) {
+    .opening-content {
+      padding: 30px 20px;
+      max-width: 95vw;
+    }
+
+    .game-logo {
+      width: 350px;
+    }
+
+    .instructions h3 {
+      font-size: 22px;
+    }
+
+    .instructions p {
+      font-size: 16px;
+    }
+
+    .controls-info {
+      gap: 15px;
+    }
+
+    .controls-info span {
+      font-size: 14px;
+      padding: 6px 12px;
+    }
+
+    .start-button {
+      font-size: 24px;
+      padding: 15px 35px;
+    }
+
     .haunted-hud {
       padding: 10px 20px;
       gap: 15px;
@@ -406,6 +595,22 @@
 </style>
 
 <script>
+  // ========== START GAME HANDLER ==========
+  const startButton = document.getElementById('start-button');
+  const openingScreen = document.getElementById('opening-screen');
+  const gameHud = document.getElementById('game-hud');
+
+  startButton.addEventListener('click', () => {
+    // Hide opening screen
+    openingScreen.style.display = 'none';
+
+    // Show HUD
+    gameHud.style.display = 'flex';
+
+    // Send start signal to server
+    hytopia.sendData({ type: 'start-game' });
+  });
+
   // ========== HUD UPDATE HANDLER ==========
   hytopia.onData(data => {
     if (data.type === 'hud-update') {
@@ -503,9 +708,11 @@
 
       gameEndScreen.style.display = 'flex';
 
-      // Hide after 11 seconds (restart happens after 10 seconds on server)
+      // Hide after 11 seconds and show opening screen again
       setTimeout(() => {
         gameEndScreen.style.display = 'none';
+        gameHud.style.display = 'none';
+        openingScreen.style.display = 'flex';
       }, 11000);
     }
   });
