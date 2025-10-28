@@ -18,6 +18,7 @@ import {
   World,
   Player,
   ParticleEmitter,
+  PersistenceManager,
   type Vec3,
 } from 'hytopia';
 
@@ -94,7 +95,7 @@ function calculateScore(state: GameState, won: boolean): number {
   return Math.max(0, score); // Never negative
 }
 
-function addToLeaderboard(playerName: string, state: GameState) {
+async function addToLeaderboard(playerName: string, state: GameState) {
   const entry: LeaderboardEntry = {
     playerName,
     score: state.finalScore,
@@ -115,6 +116,14 @@ function addToLeaderboard(playerName: string, state: GameState) {
   }
 
   console.log(`📊 ${playerName} added to leaderboard with score: ${state.finalScore}`);
+
+  // Save to persistent storage
+  try {
+    await PersistenceManager.instance.setGlobalData('leaderboard', gameLeaderboard);
+    console.log(`💾 Leaderboard saved to persistent storage`);
+  } catch (error) {
+    console.error(`❌ Failed to save leaderboard:`, error);
+  }
 }
 
 function getTopTenLeaderboard(): LeaderboardEntry[] {
@@ -162,8 +171,23 @@ const WIN_ZONE_SIZE: Vec3 = { x: 4, y: 4, z: 4 };
 // MAIN SERVER
 // ============================================================================
 
-startServer(world => {
+startServer(async world => {
   console.log('🏰 Haunted Castle: Five-Minute Fright - Starting...');
+
+  // Load persisted leaderboard
+  try {
+    const savedLeaderboard = await PersistenceManager.instance.getGlobalData('leaderboard');
+    if (savedLeaderboard && Array.isArray(savedLeaderboard)) {
+      gameLeaderboard.length = 0; // Clear the array
+      gameLeaderboard.push(...savedLeaderboard);
+      console.log(`📊 Loaded ${gameLeaderboard.length} entries from persistent leaderboard`);
+    } else {
+      console.log('📊 No existing leaderboard found, starting fresh');
+    }
+  } catch (error) {
+    console.error('❌ Failed to load leaderboard:', error);
+    console.log('📊 Starting with empty leaderboard');
+  }
 
   // Load the haunted castle map
   world.loadMap(hauntedCastleMap);
@@ -1002,15 +1026,15 @@ function startPlayerTimer(world: World, player: Player) {
 // GAME END
 // ============================================================================
 
-function endGame(world: World, player: Player, won: boolean, message: string) {
+async function endGame(world: World, player: Player, won: boolean, message: string) {
   const state = getPlayerState(player);
   state.gameOver = true;
 
   // Calculate final score
   state.finalScore = calculateScore(state, won);
 
-  // Add to leaderboard
-  addToLeaderboard(player.username, state);
+  // Add to leaderboard and save
+  await addToLeaderboard(player.username, state);
 
   // Get top 10 for display
   const topTen = getTopTenLeaderboard();
