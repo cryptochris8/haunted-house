@@ -249,6 +249,9 @@ startServer(async world => {
   spawnDecorativeSpiders(world);
   spawnAtmosphericSmoke(world);
 
+  // Start skeleton proximity sound check
+  startSkeletonProximitySounds(world);
+
   // Create escape doorway openings
   createEscapeDoorways(world);
 
@@ -470,6 +473,9 @@ function spawnDecorativeSkeletons(world: World) {
 
     skeleton.spawn(world, pos);
 
+    // Store skeleton for proximity checking
+    decorativeSkeletons.push(skeleton);
+
     // Make skeleton intangible (no collision with player)
     skeleton.setCollisionGroupsForSolidColliders({
       belongsTo: [],
@@ -499,6 +505,50 @@ function spawnDecorativeSkeletons(world: World) {
 
     console.log(`💀 Spawned wandering skeleton at x:${pos.x}, y:${pos.y}, z:${pos.z}`);
   });
+}
+
+function startSkeletonProximitySounds(world: World) {
+  // Check proximity to all skeletons for all players every 2 seconds
+  setInterval(() => {
+    const allPlayerEntities = world.entityManager.getAllPlayerEntities();
+
+    for (const playerEntity of allPlayerEntities) {
+      if (!playerEntity.player) continue;
+
+      const playerId = playerEntity.player.id;
+      const now = Date.now();
+      const lastPlayTime = skeletonProximitySoundCooldown.get(playerId) || 0;
+
+      // Only check if cooldown has elapsed
+      if (now - lastPlayTime < SKELETON_PROXIMITY_SOUND_COOLDOWN_MS) continue;
+
+      // Find closest skeleton
+      let closestDistance = Infinity;
+      let closestSkeleton: Entity | null = null;
+
+      for (const skeleton of decorativeSkeletons) {
+        if (!skeleton.isSpawned) continue;
+
+        const distance = calculateDistance(skeleton.position, playerEntity.position);
+        if (distance < closestDistance) {
+          closestDistance = distance;
+          closestSkeleton = skeleton;
+        }
+      }
+
+      // Play sound if close enough to any skeleton
+      if (closestSkeleton && closestDistance < SKELETON_PROXIMITY_DISTANCE) {
+        new Audio({
+          uri: 'sounds/sfx/skeleton.wav',
+          volume: Math.max(0.2, 0.7 - (closestDistance / SKELETON_PROXIMITY_DISTANCE)), // Quieter than zombie
+          position: closestSkeleton.position,
+        }).play(world);
+
+        skeletonProximitySoundCooldown.set(playerId, now);
+        console.log(`💀 Skeleton sound played for ${playerEntity.player.username} at distance ${closestDistance.toFixed(1)}`);
+      }
+    }
+  }, 2000); // Check every 2 seconds
 }
 
 function spawnFlyingBats(world: World) {
@@ -736,8 +786,14 @@ function spawnGate(world: World) {
 
 // Track last time proximity sound played for each player (to prevent spam)
 const zombieProximitySoundCooldown = new Map<string, number>();
+const skeletonProximitySoundCooldown = new Map<string, number>();
 const PROXIMITY_SOUND_COOLDOWN_MS = 8000; // Play sound every 8 seconds max
+const SKELETON_PROXIMITY_SOUND_COOLDOWN_MS = 10000; // Play skeleton sound every 10 seconds max
 const PROXIMITY_DISTANCE = 12; // Play sound when zombie is within 12 blocks
+const SKELETON_PROXIMITY_DISTANCE = 8; // Play sound when skeleton is within 8 blocks
+
+// Store skeleton entities for proximity checking
+const decorativeSkeletons: Entity[] = [];
 
 function spawnZombie(world: World) {
   const zombie = new Entity({
