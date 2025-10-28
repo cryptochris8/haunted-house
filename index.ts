@@ -141,17 +141,48 @@ const KEY_POSITIONS: Vec3[] = [
 ];
 
 // ============================================================================
-// ZOMBIE WAYPOINTS (set these based on your castle patrol routes)
+// ZOMBIE WAYPOINTS (multi-floor patrol route with stairwell navigation)
 // ============================================================================
 
 const ZOMBIE_WAYPOINTS: Vec3[] = [
-  { x: 5.1, y: 21.8, z: -3.9 },    // Bottom of middle stairway
-  { x: 5.5, y: 33.8, z: 18.6 },    // Mid stairway
-  { x: 6.2, y: 57.8, z: 46.9 },    // Top of stairway
-  { x: 45.6, y: 33.8, z: -23.4 },  // Near Key 1
-  { x: -30.0, y: 45.8, z: -1.2 },  // Near Key 2
-  { x: 25.1, y: 57.8, z: 20.7 },   // Near Key 3
-  { x: 5.0, y: 21.8, z: -26.2 },   // Bottom - completes loop
+  // GROUND FLOOR PATROL (y: 21.8)
+  { x: 5.1, y: 21.8, z: -3.9 },     // Start - Bottom of middle stairway
+  { x: 5.0, y: 21.8, z: -26.2 },    // Near gate area
+  { x: 5.0, y: 21.8, z: -40.0 },    // Near win zone
+  { x: -15.0, y: 21.8, z: -5.0 },   // West side ground floor
+  { x: 15.0, y: 21.8, z: 5.0 },     // East side ground floor
+
+  // STAIRS UP - Transition to second floor
+  { x: 5.1, y: 26.0, z: 2.0 },      // Lower stairs
+  { x: 5.3, y: 30.0, z: 8.0 },      // Mid stairs
+
+  // SECOND FLOOR PATROL (y: 33.8)
+  { x: 5.5, y: 33.8, z: 13.6 },     // Top of main stairs
+  { x: 38.0, y: 33.8, z: -10.0 },   // Approach to Key 1 area (right side)
+  { x: 43.0, y: 33.8, z: -13.0 },   // Near Key 1
+  { x: 10.0, y: 33.8, z: -8.0 },    // Central second floor
+  { x: -20.0, y: 33.8, z: 0.0 },    // Left side second floor
+
+  // STAIRS UP - Transition to upper levels
+  { x: -25.0, y: 39.0, z: -1.0 },   // Stairs to Key 2 level
+
+  // UPPER LEVEL PATROL (y: 45.8)
+  { x: -30.0, y: 45.8, z: -1.2 },   // Near Key 2
+  { x: -28.0, y: 45.8, z: 3.0 },    // Key 2 area patrol
+
+  // STAIRS TO TOWER
+  { x: 10.0, y: 50.0, z: 15.0 },    // Stairs toward tower
+
+  // TOWER LEVEL (y: 57.8-59)
+  { x: 20.7, y: 57.8, z: 13.5 },    // Tower approach
+  { x: 25.1, y: 57.8, z: 20.7 },    // Near Key 3
+  { x: 23.0, y: 58.0, z: 17.0 },    // Tower patrol
+
+  // DESCENT - Back down to ground floor
+  { x: 8.0, y: 50.0, z: 20.0 },     // Start descent
+  { x: 6.0, y: 40.0, z: 15.0 },     // Mid descent
+  { x: 5.5, y: 30.0, z: 10.0 },     // Lower descent
+  { x: 5.1, y: 21.8, z: 0.0 },      // Back to ground - loop complete
 ];
 
 // ============================================================================
@@ -786,21 +817,68 @@ function spawnZombie(world: World) {
         chasing = nearestPlayer;
       }
 
-      // Move toward player
-      const direction = normalize({
-        x: nearestPlayerEntity.position.x - zombie.position.x,
-        y: 0,
-        z: nearestPlayerEntity.position.z - zombie.position.z,
-      });
+      // Check if player is on a different floor (vertical distance > 5 blocks)
+      const verticalDistance = Math.abs(nearestPlayerEntity.position.y - zombie.position.y);
+      const playerIsOnDifferentFloor = verticalDistance > 5;
 
-      zombie.setLinearVelocity({
-        x: direction.x * gameConfig.zombie.chaseSpeed,
-        y: 0,
-        z: direction.z * gameConfig.zombie.chaseSpeed,
-      });
+      // Speed boost: 3.5x normal speed during chase (2.6 -> 3.5)
+      const chaseSpeedMultiplier = playerIsOnDifferentFloor ? 1.5 : 1.35;
+      const effectiveChaseSpeed = gameConfig.zombie.chaseSpeed * chaseSpeedMultiplier;
 
-      // Check if caught player
-      if (nearestDistance < 2) {
+      if (playerIsOnDifferentFloor) {
+        // Player on different floor - navigate to closest stairwell waypoint
+        let closestWaypoint = ZOMBIE_WAYPOINTS[currentWaypoint];
+        let closestWaypointIndex = currentWaypoint;
+        let closestWaypointDistance = Infinity;
+
+        // Find waypoint that gets us closer to player's vertical position
+        for (let i = 0; i < ZOMBIE_WAYPOINTS.length; i++) {
+          const waypoint = ZOMBIE_WAYPOINTS[i];
+          const waypointToPlayerDistance = calculateDistance(waypoint, nearestPlayerEntity.position);
+          const zombieToWaypointDistance = calculateDistance(zombie.position, waypoint);
+
+          // Prefer waypoints that are closer to player's height and nearby
+          if (zombieToWaypointDistance < 30 && waypointToPlayerDistance < closestWaypointDistance) {
+            closestWaypointDistance = waypointToPlayerDistance;
+            closestWaypoint = waypoint;
+            closestWaypointIndex = i;
+          }
+        }
+
+        // Navigate toward the waypoint that brings us closer to player
+        const waypointDirection = normalize({
+          x: closestWaypoint.x - zombie.position.x,
+          y: closestWaypoint.y - zombie.position.y,
+          z: closestWaypoint.z - zombie.position.z,
+        });
+
+        zombie.setLinearVelocity({
+          x: waypointDirection.x * effectiveChaseSpeed,
+          y: waypointDirection.y * effectiveChaseSpeed * 0.5, // Slower vertical movement
+          z: waypointDirection.z * effectiveChaseSpeed,
+        });
+
+        // Update current waypoint if we reached it
+        if (calculateDistance(zombie.position, closestWaypoint) < 2) {
+          currentWaypoint = closestWaypointIndex;
+        }
+      } else {
+        // Player on same floor - direct pursuit
+        const direction = normalize({
+          x: nearestPlayerEntity.position.x - zombie.position.x,
+          y: 0,
+          z: nearestPlayerEntity.position.z - zombie.position.z,
+        });
+
+        zombie.setLinearVelocity({
+          x: direction.x * effectiveChaseSpeed,
+          y: 0,
+          z: direction.z * effectiveChaseSpeed,
+        });
+      }
+
+      // Check if caught player (same floor only)
+      if (nearestDistance < 2 && verticalDistance < 3) {
         catchPlayer(world, nearestPlayer, zombie);
       }
 
@@ -814,18 +892,22 @@ function spawnZombie(world: World) {
       const target = ZOMBIE_WAYPOINTS[currentWaypoint];
       const distance = calculateDistance(zombie.position, target);
 
-      if (distance < 1) {
+      if (distance < 1.5) {
         currentWaypoint = (currentWaypoint + 1) % ZOMBIE_WAYPOINTS.length;
       } else {
+        // Include vertical movement for multi-floor patrol
+        const verticalDistance = Math.abs(target.y - zombie.position.y);
+        const isClimbingStairs = verticalDistance > 2;
+
         const direction = normalize({
           x: target.x - zombie.position.x,
-          y: 0,
+          y: isClimbingStairs ? (target.y - zombie.position.y) : 0,
           z: target.z - zombie.position.z,
         });
 
         zombie.setLinearVelocity({
           x: direction.x * gameConfig.zombie.walkSpeed,
-          y: 0,
+          y: isClimbingStairs ? direction.y * gameConfig.zombie.walkSpeed * 0.4 : 0,
           z: direction.z * gameConfig.zombie.walkSpeed,
         });
       }
