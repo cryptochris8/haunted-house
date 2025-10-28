@@ -3,7 +3,7 @@
  * HYTOPIA FEAR Game Jam 2025
  *
  * A horror survival game where players must collect 3 keys
- * and escape before time runs out or the ghost catches them!
+ * and escape before time runs out or the zombie catches them!
  */
 
 import {
@@ -61,10 +61,10 @@ const KEY_POSITIONS: Vec3[] = [
 ];
 
 // ============================================================================
-// GHOST WAYPOINTS (set these based on your castle patrol routes)
+// ZOMBIE WAYPOINTS (set these based on your castle patrol routes)
 // ============================================================================
 
-const GHOST_WAYPOINTS: Vec3[] = [
+const ZOMBIE_WAYPOINTS: Vec3[] = [
   { x: 5.1, y: 21.8, z: -3.9 },    // Bottom of middle stairway
   { x: 5.5, y: 33.8, z: 18.6 },    // Mid stairway
   { x: 6.2, y: 57.8, z: 46.9 },    // Top of stairway
@@ -114,8 +114,8 @@ startServer(world => {
   // Spawn the gate
   spawnGate(world);
 
-  // Spawn the ghost
-  spawnGhost(world);
+  // Spawn the zombie
+  spawnZombie(world);
 
   // Create win zone trigger
   createWinZone(world);
@@ -150,7 +150,7 @@ startServer(world => {
     // Welcome messages
     world.chatManager.sendPlayerMessage(player, '🏰 Welcome to the Haunted Castle!', 'FF0000');
     world.chatManager.sendPlayerMessage(player, '🔑 Collect 3 keys to unlock the gate', 'FFAA00');
-    world.chatManager.sendPlayerMessage(player, '👻 Avoid the ghost! You have 3 lives', 'FF00FF');
+    world.chatManager.sendPlayerMessage(player, '🧟 Avoid the zombie! You have 3 lives', 'FF00FF');
     world.chatManager.sendPlayerMessage(player, '⏱️ You have 5 minutes to escape!', 'FF0000');
 
     // Start player timer
@@ -308,28 +308,42 @@ function spawnGate(world: World) {
 }
 
 // ============================================================================
-// GHOST AI
+// ZOMBIE AI
 // ============================================================================
 
-function spawnGhost(world: World) {
-  const ghost = new Entity({
+function spawnZombie(world: World) {
+  const zombie = new Entity({
     name: 'The_Warden',
-    // Using a dark block as the ghost placeholder
-    blockTextureUri: 'blocks/black-concrete.png',
-    blockHalfExtents: { x: 0.5, y: 1.0, z: 0.5 },
+    // Using zombie model as the menacing Warden
+    modelUri: 'models/npcs/zombie.gltf',
+    modelScale: 1.5, // Larger for better visibility and intimidation
+    modelEmissiveIntensity: 1.2, // Brighter glow so it's visible in dark castle
+    tintColor: { r: 150, g: 255, b: 150 }, // Eerie green zombie glow
     rigidBodyOptions: {
       type: RigidBodyType.KINEMATIC_VELOCITY,
     },
   });
 
-  ghost.spawn(world, GHOST_WAYPOINTS[0]);
+  console.log('🧟 Spawning The Warden at:', ZOMBIE_WAYPOINTS[0]);
+  zombie.spawn(world, ZOMBIE_WAYPOINTS[0]);
+  console.log('🧟 The Warden spawned successfully!');
 
   let currentWaypoint = 0;
   let chasing: Player | null = null;
+  let tickCount = 0;
 
-  // Ghost AI tick
+  // Zombie AI tick
   setInterval(() => {
-    if (!ghost.isSpawned) return;
+    if (!zombie.isSpawned) {
+      console.log('⚠️ Warning: Zombie is not spawned!');
+      return;
+    }
+
+    // Log position every 25 ticks (5 seconds) for debugging
+    tickCount++;
+    if (tickCount % 25 === 0) {
+      console.log(`🧟 Zombie position: x=${zombie.position.x.toFixed(1)}, y=${zombie.position.y.toFixed(1)}, z=${zombie.position.z.toFixed(1)} | Waypoint ${currentWaypoint}/${ZOMBIE_WAYPOINTS.length} | Chasing: ${chasing ? 'YES' : 'NO'}`);
+    }
 
     // Find nearest player
     let nearestPlayer: Player | null = null;
@@ -341,7 +355,7 @@ function spawnGhost(world: World) {
 
     for (const playerEntity of allPlayerEntities) {
       if (playerEntity.player) {
-        const distance = calculateDistance(ghost.position, playerEntity.position);
+        const distance = calculateDistance(zombie.position, playerEntity.position);
 
         if (distance < nearestDistance) {
           nearestDistance = distance;
@@ -352,59 +366,59 @@ function spawnGhost(world: World) {
     }
 
     // Chase logic
-    if (nearestPlayer && nearestPlayerEntity && nearestDistance < gameConfig.ghost.sightRange) {
+    if (nearestPlayer && nearestPlayerEntity && nearestDistance < gameConfig.zombie.sightRange) {
       if (!chasing) {
         chasing = nearestPlayer;
       }
 
       // Move toward player
       const direction = normalize({
-        x: nearestPlayerEntity.position.x - ghost.position.x,
+        x: nearestPlayerEntity.position.x - zombie.position.x,
         y: 0,
-        z: nearestPlayerEntity.position.z - ghost.position.z,
+        z: nearestPlayerEntity.position.z - zombie.position.z,
       });
 
-      ghost.setLinearVelocity({
-        x: direction.x * gameConfig.ghost.chaseSpeed,
+      zombie.setLinearVelocity({
+        x: direction.x * gameConfig.zombie.chaseSpeed,
         y: 0,
-        z: direction.z * gameConfig.ghost.chaseSpeed,
+        z: direction.z * gameConfig.zombie.chaseSpeed,
       });
 
       // Check if caught player
       if (nearestDistance < 2) {
-        catchPlayer(world, nearestPlayer, ghost);
+        catchPlayer(world, nearestPlayer, zombie);
       }
 
       // Lost player
-      if (nearestDistance > gameConfig.ghost.loseRange) {
+      if (nearestDistance > gameConfig.zombie.loseRange) {
         chasing = null;
       }
     } else {
       // Patrol mode
       chasing = null;
-      const target = GHOST_WAYPOINTS[currentWaypoint];
-      const distance = calculateDistance(ghost.position, target);
+      const target = ZOMBIE_WAYPOINTS[currentWaypoint];
+      const distance = calculateDistance(zombie.position, target);
 
       if (distance < 1) {
-        currentWaypoint = (currentWaypoint + 1) % GHOST_WAYPOINTS.length;
+        currentWaypoint = (currentWaypoint + 1) % ZOMBIE_WAYPOINTS.length;
       } else {
         const direction = normalize({
-          x: target.x - ghost.position.x,
+          x: target.x - zombie.position.x,
           y: 0,
-          z: target.z - ghost.position.z,
+          z: target.z - zombie.position.z,
         });
 
-        ghost.setLinearVelocity({
-          x: direction.x * gameConfig.ghost.walkSpeed,
+        zombie.setLinearVelocity({
+          x: direction.x * gameConfig.zombie.walkSpeed,
           y: 0,
-          z: direction.z * gameConfig.ghost.walkSpeed,
+          z: direction.z * gameConfig.zombie.walkSpeed,
         });
       }
     }
   }, 200);
 }
 
-function catchPlayer(world: World, player: Player, ghost: Entity) {
+function catchPlayer(world: World, player: Player, zombie: Entity) {
   const state = getPlayerState(player);
 
   if (state.gameOver) return;
@@ -415,7 +429,7 @@ function catchPlayer(world: World, player: Player, ghost: Entity) {
   new Audio({
     uri: 'audio/sfx/hit.mp3',
     volume: 0.8,
-    position: ghost.position,
+    position: zombie.position,
   }).play(world);
 
   // Send message
@@ -439,11 +453,11 @@ function catchPlayer(world: World, player: Player, ghost: Entity) {
     endGame(world, player, false, 'The Warden claimed you...');
   }
 
-  // Stun ghost briefly
-  ghost.setLinearVelocity({ x: 0, y: 0, z: 0 });
+  // Stun zombie briefly
+  zombie.setLinearVelocity({ x: 0, y: 0, z: 0 });
   setTimeout(() => {
-    // Ghost resumes after stun
-  }, gameConfig.ghost.stunSeconds * 1000);
+    // Zombie resumes after stun
+  }, gameConfig.zombie.stunSeconds * 1000);
 }
 
 // ============================================================================
