@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Haunted Castle HUD</title>
+</head>
+<body>
+
+<!-- HAUNTED CASTLE HUD -->
+<div class="haunted-hud">
+  <div class="hud-timer" id="timer">5:00</div>
+  <div class="hud-keys" id="keys">
+    <span class="key-icon">🔑</span>
+    <span id="key-count">0/3</span>
+  </div>
+  <div class="hud-lives" id="lives">
+    <span class="lives-icon">❤️</span>
+    <span id="lives-count">3</span>
+  </div>
+</div>
+
+<!-- GAME END SCREEN -->
+<div class="game-end-screen" id="game-end" style="display: none;">
+  <div class="end-content">
+    <h1 id="end-title">Game Over</h1>
+    <p id="end-message">The Warden claimed you...</p>
+    <p class="restart-text">Restarting soon...</p>
+  </div>
+</div>
+
+<!-- MOBILE CONTROLS -->
+<div class="mobile-controls">
+  <a id="mobile-interact-button" class="mobile-button">
+    <img src="{{CDN_ASSETS_URL}}/icons/target.png" />
+  </a>
+
+  <a id="mobile-jump-button" class="mobile-button">
+    <img src="{{CDN_ASSETS_URL}}/icons/jump.png" />
+  </a>
+</div>
+
+<style>
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    font-family: 'Trebuchet MS', 'Arial', sans-serif;
+    overflow: hidden;
+  }
+
+  /* ========== HAUNTED CASTLE HUD ========== */
+  .haunted-hud {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 30px;
+    align-items: center;
+    background: linear-gradient(to bottom, rgba(20, 0, 0, 0.95), rgba(10, 0, 0, 0.85));
+    border: 3px solid rgba(139, 0, 0, 0.6);
+    box-shadow:
+      0 0 20px rgba(139, 0, 0, 0.8),
+      inset 0 0 20px rgba(255, 0, 0, 0.1);
+    border-radius: 12px;
+    padding: 15px 30px;
+    backdrop-filter: blur(5px);
+    z-index: 1000;
+  }
+
+  .hud-timer {
+    font-size: 32px;
+    font-weight: bold;
+    color: #ff4444;
+    text-shadow:
+      0 0 10px rgba(255, 68, 68, 0.8),
+      2px 2px 4px rgba(0, 0, 0, 0.9);
+    letter-spacing: 2px;
+    font-family: 'Courier New', monospace;
+    min-width: 100px;
+    text-align: center;
+  }
+
+  .hud-keys, .hud-lives {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 24px;
+    color: #ffffff;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9);
+  }
+
+  .key-icon, .lives-icon {
+    font-size: 28px;
+    filter: drop-shadow(0 0 8px rgba(255, 215, 0, 0.8));
+  }
+
+  #key-count {
+    font-weight: bold;
+    color: #ffd700;
+    text-shadow:
+      0 0 8px rgba(255, 215, 0, 0.6),
+      2px 2px 4px rgba(0, 0, 0, 0.9);
+  }
+
+  #lives-count {
+    font-weight: bold;
+    color: #ff6666;
+    text-shadow:
+      0 0 8px rgba(255, 102, 102, 0.6),
+      2px 2px 4px rgba(0, 0, 0, 0.9);
+  }
+
+  /* ========== GAME END SCREEN ========== */
+  .game-end-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+    animation: fadeIn 0.5s ease;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  .end-content {
+    text-align: center;
+    padding: 40px;
+    background: linear-gradient(to bottom, rgba(40, 0, 0, 0.95), rgba(20, 0, 0, 0.95));
+    border: 4px solid rgba(139, 0, 0, 0.8);
+    border-radius: 16px;
+    box-shadow:
+      0 0 30px rgba(139, 0, 0, 1),
+      inset 0 0 30px rgba(255, 0, 0, 0.2);
+    max-width: 600px;
+  }
+
+  #end-title {
+    font-size: 56px;
+    color: #ff4444;
+    text-shadow:
+      0 0 20px rgba(255, 68, 68, 1),
+      4px 4px 8px rgba(0, 0, 0, 0.9);
+    margin-bottom: 20px;
+    font-weight: bold;
+  }
+
+  #end-message {
+    font-size: 28px;
+    color: #ffffff;
+    text-shadow: 2px 2px 6px rgba(0, 0, 0, 0.9);
+    margin-bottom: 30px;
+  }
+
+  .restart-text {
+    font-size: 20px;
+    color: #ffaa00;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9);
+    animation: pulse 1.5s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+
+  /* ========== MOBILE CONTROLS ========== */
+  .mobile-controls {
+    display: none;
+  }
+
+  body.mobile .mobile-controls {
+    display: flex;
+    gap: 14px;
+    position: fixed;
+    bottom: 40px;
+    right: 40px;
+    z-index: 1000;
+  }
+
+  .mobile-button {
+    background-color: rgba(0, 0, 0, 0.5);
+    border-radius: 50%;
+    align-items: center;
+    justify-content: center;
+    display: flex;
+    width: 50px;
+    height: 50px;
+    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: transform, background-color;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    font-weight: bold;
+    color: rgba(255, 255, 255, 0.8);
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+  }
+
+  .mobile-button img {
+    width: 22px;
+    height: 22px;
+  }
+
+  .mobile-button.active {
+    transform: scale(0.92);
+    background-color: rgba(0, 0, 0, 0.75);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  }
+
+  /* ========== RESPONSIVE ========== */
+  @media (max-width: 768px) {
+    .haunted-hud {
+      padding: 10px 20px;
+      gap: 15px;
+    }
+
+    .hud-timer {
+      font-size: 24px;
+      min-width: 80px;
+    }
+
+    .hud-keys, .hud-lives {
+      font-size: 18px;
+    }
+
+    .key-icon, .lives-icon {
+      font-size: 20px;
+    }
+
+    #end-title {
+      font-size: 40px;
+    }
+
+    #end-message {
+      font-size: 20px;
+    }
+  }
+</style>
+
+<script>
+  // ========== HUD UPDATE HANDLER ==========
+  hytopia.onData(data => {
+    if (data.type === 'hud-update') {
+      // Update timer
+      if (data.timer) {
+        document.getElementById('timer').textContent = data.timer;
+
+        // Flash red when time is low
+        const [minutes, seconds] = data.timer.split(':').map(Number);
+        const totalSeconds = minutes * 60 + seconds;
+
+        const timerElement = document.getElementById('timer');
+        if (totalSeconds <= 30) {
+          timerElement.style.animation = 'pulse 1s infinite';
+        } else {
+          timerElement.style.animation = 'none';
+        }
+      }
+
+      // Update keys
+      if (data.keys !== undefined) {
+        document.getElementById('key-count').textContent = data.keys;
+      }
+
+      // Update lives
+      if (data.lives !== undefined) {
+        document.getElementById('lives-count').textContent = data.lives;
+
+        // Change color based on lives
+        const livesElement = document.getElementById('lives-count');
+        if (data.lives === 1) {
+          livesElement.style.color = '#ff0000';
+          livesElement.style.animation = 'pulse 0.5s infinite';
+        } else if (data.lives === 2) {
+          livesElement.style.color = '#ff6666';
+        } else {
+          livesElement.style.color = '#ff6666';
+          livesElement.style.animation = 'none';
+        }
+      }
+    }
+
+    // Game end screen
+    if (data.type === 'game-end') {
+      const gameEndScreen = document.getElementById('game-end');
+      const endTitle = document.getElementById('end-title');
+      const endMessage = document.getElementById('end-message');
+
+      if (data.won) {
+        endTitle.textContent = '🎉 YOU ESCAPED! 🎉';
+        endTitle.style.color = '#00ff00';
+        endMessage.textContent = data.message;
+      } else {
+        endTitle.textContent = '💀 GAME OVER 💀';
+        endTitle.style.color = '#ff0000';
+        endMessage.textContent = data.message;
+      }
+
+      gameEndScreen.style.display = 'flex';
+
+      // Hide after 5 seconds (restart happens on server)
+      setTimeout(() => {
+        gameEndScreen.style.display = 'none';
+      }, 5000);
+    }
+  });
+
+  // ========== MOBILE CONTROLS ==========
+  const mobileInteractButton = document.getElementById('mobile-interact-button');
+  mobileInteractButton.addEventListener('touchstart', e => {
+    e.preventDefault();
+    mobileInteractButton.classList.add('active');
+    hytopia.pressInput('ml', true);
+  });
+
+  mobileInteractButton.addEventListener('touchend', e => {
+    e.preventDefault();
+    mobileInteractButton.classList.remove('active');
+    hytopia.pressInput('ml', false);
+  });
+
+  const mobileJumpButton = document.getElementById('mobile-jump-button');
+  mobileJumpButton.addEventListener('touchstart', e => {
+    e.preventDefault();
+    mobileJumpButton.classList.add('active');
+    hytopia.pressInput(' ', true);
+  });
+
+  mobileJumpButton.addEventListener('touchend', e => {
+    e.preventDefault();
+    mobileJumpButton.classList.remove('active');
+    hytopia.pressInput(' ', false);
+  });
+</script>
+
+</body>
+</html>
