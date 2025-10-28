@@ -34,9 +34,21 @@ interface GameState {
   timeLeft: number;
   gameOver: boolean;
   gateUnlocked: boolean;
+  score: number;
+  finalScore: number;
+}
+
+interface LeaderboardEntry {
+  playerName: string;
+  score: number;
+  keysCollected: number;
+  livesRemaining: number;
+  timeRemaining: number;
+  timestamp: number;
 }
 
 const playerStates = new Map<string, GameState>();
+const gameLeaderboard: LeaderboardEntry[] = [];
 
 function getPlayerState(player: Player): GameState {
   if (!playerStates.has(player.id)) {
@@ -46,9 +58,67 @@ function getPlayerState(player: Player): GameState {
       timeLeft: gameConfig.roundSeconds,
       gameOver: false,
       gateUnlocked: false,
+      score: 0,
+      finalScore: 0,
     });
   }
   return playerStates.get(player.id)!;
+}
+
+// ============================================================================
+// SCORING SYSTEM
+// ============================================================================
+
+function calculateScore(state: GameState, won: boolean): number {
+  let score = 0;
+
+  // Base score for completing (only if won)
+  if (won) {
+    score += 1000;
+  }
+
+  // Time bonus: 10 points per second remaining
+  score += state.timeLeft * 10;
+
+  // Lives bonus: 500 points per life remaining
+  score += state.lives * 500;
+
+  // Keys collected: 300 points per key
+  score += state.keysCollected * 300;
+
+  // Perfect run bonus: all 3 lives + won game
+  if (won && state.lives === 3) {
+    score += 2000;
+  }
+
+  return Math.max(0, score); // Never negative
+}
+
+function addToLeaderboard(playerName: string, state: GameState) {
+  const entry: LeaderboardEntry = {
+    playerName,
+    score: state.finalScore,
+    keysCollected: state.keysCollected,
+    livesRemaining: state.lives,
+    timeRemaining: state.timeLeft,
+    timestamp: Date.now(),
+  };
+
+  gameLeaderboard.push(entry);
+
+  // Sort by score descending
+  gameLeaderboard.sort((a, b) => b.score - a.score);
+
+  // Keep only top 10
+  if (gameLeaderboard.length > 10) {
+    gameLeaderboard.splice(10);
+  }
+
+  console.log(`📊 ${playerName} added to leaderboard with score: ${state.finalScore}`);
+}
+
+function getTopTenLeaderboard(): LeaderboardEntry[] {
+  return gameLeaderboard.slice(0, 10);
 }
 
 // ============================================================================
@@ -56,7 +126,7 @@ function getPlayerState(player: Player): GameState {
 // ============================================================================
 
 const KEY_POSITIONS: Vec3[] = [
-  { x: 45.6, y: 35, z: -23.6 },  // Key 1 - Right tower area
+  { x: 41.3, y: 33.8, z: -12.9 },  // Key 1 - Safer location on upper level
   { x: -30.2, y: 47, z: -1.7 },  // Key 2 - Left upper level
   { x: 25.6, y: 59, z: 22.0 },   // Key 3 - High tower (hardest!)
 ];
@@ -141,6 +211,8 @@ startServer(world => {
     state.timeLeft = gameConfig.roundSeconds;
     state.gameOver = false;
     state.gateUnlocked = false;
+    state.score = 0;
+    state.finalScore = 0;
 
     // Create player entity
     const playerEntity = new DefaultPlayerEntity({
@@ -148,7 +220,7 @@ startServer(world => {
       name: player.username,
     });
 
-    // Spawn player at castle entrance
+    // Spawn player near Key 1 (safer starting position)
     playerEntity.spawn(world, { x: 13, y: 22, z: -56 });
 
     // Load UI
@@ -293,7 +365,7 @@ function spawnKeys(world: World) {
             state.gateUnlocked = true;
             world.chatManager.sendPlayerMessage(
               player,
-              '🚪 The gate has unlocked! Run to the exit!',
+              '🚪 The gate is now unlocked! Run quickly to the golden beacon platform! 🏆',
               '00FF00'
             );
           }
@@ -310,9 +382,9 @@ function spawnKeys(world: World) {
 function spawnDecorativeSkeletons(world: World) {
   // Skeleton positions near each key for spooky atmosphere
   const skeletonPositions: Vec3[] = [
-    // Near Key 1 - Position: x:43.6, y:33.8, z:-7.2
-    { x: 41.5, y: 33.8, z: -8.0 },
-    { x: 45.0, y: 33.8, z: -6.5 },
+    // Near Key 1 - Position: x:41.3, y:33.8, z:-12.9
+    { x: 39.5, y: 33.8, z: -13.5 },
+    { x: 43.0, y: 33.8, z: -12.0 },
 
     // Near Key 2 - Position: x:-30.0, y:45.8, z:2.1
     { x: -32.0, y: 45.8, z: 1.0 },
@@ -433,9 +505,9 @@ function spawnFlyingBats(world: World) {
 function spawnDecorativeSpiders(world: World) {
   // Spider positions in dark corners and near keys for creepy atmosphere
   const spiderPositions: Vec3[] = [
-    // Near Key 1 - Position: x:43.6, y:33.8, z:-7.2
-    { x: 42.5, y: 33.8, z: -8.5 },
-    { x: 44.8, y: 33.8, z: -6.0 },
+    // Near Key 1 - Position: x:41.3, y:33.8, z:-12.9
+    { x: 40.0, y: 33.8, z: -14.0 },
+    { x: 42.5, y: 33.8, z: -11.5 },
 
     // Near Key 2 - Position: x:-30.0, y:45.8, z:2.1
     { x: -31.5, y: 45.8, z: 0.8 },
@@ -491,8 +563,8 @@ function spawnDecorativeSpiders(world: World) {
 }
 
 function spawnAtmosphericSmoke(world: World) {
-  // Eerie green fog near zombie spawn
-  const zombieSmoke = new ParticleEmitter({
+  // Eerie green fog near Key 1 (x:41.3, y:33.8, z:-12.9)
+  const key1Smoke = new ParticleEmitter({
     textureUri: 'particles/smoke.png',
     colorStart: { r: 100, g: 200, b: 100 }, // Eerie green
     colorEnd: { r: 50, g: 100, b: 50 },
@@ -503,49 +575,67 @@ function spawnAtmosphericSmoke(world: World) {
     lifetime: 6,
     lifetimeVariance: 2,
     rate: 15,
-    position: { x: 5.1, y: 22, z: -3.9 }, // Zombie spawn area
+    position: { x: 41.3, y: 34, z: -12.9 }, // Key 1 area
     velocity: { x: 0, y: 1, z: 0 },
     velocityVariance: { x: 0.5, y: 0.3, z: 0.5 },
   });
-  zombieSmoke.spawn(world);
+  key1Smoke.spawn(world);
 
-  // Dark smoke near the gate
-  const gateSmoke = new ParticleEmitter({
-    textureUri: 'particles/smoke.png',
-    colorStart: { r: 80, g: 80, b: 90 }, // Dark gray
-    colorEnd: { r: 40, g: 40, b: 50 },
-    opacityStart: 0.5,
-    opacityEnd: 0,
-    sizeStart: 3,
-    sizeEnd: 10,
-    lifetime: 8,
-    lifetimeVariance: 3,
-    rate: 10,
-    position: { x: 5.2, y: 22, z: -15.8 }, // Gate area
-    velocity: { x: 0, y: 0.8, z: 0 },
-    velocityVariance: { x: 0.8, y: 0.4, z: 0.8 },
-  });
-  gateSmoke.spawn(world);
-
-  // Mystical purple fog near stairwell
-  const stairwellSmoke = new ParticleEmitter({
+  // Dark purple fog near Key 2 (x:-30.0, y:45.8, z:2.1)
+  const key2Smoke = new ParticleEmitter({
     textureUri: 'particles/magic.png',
     colorStart: { r: 150, g: 100, b: 200 }, // Purple mystical
     colorEnd: { r: 100, g: 50, b: 150 },
-    opacityStart: 0.3,
+    opacityStart: 0.4,
     opacityEnd: 0,
-    sizeStart: 1.5,
-    sizeEnd: 6,
+    sizeStart: 2.5,
+    sizeEnd: 7,
     lifetime: 7,
     lifetimeVariance: 2,
-    rate: 8,
-    position: { x: 6, y: 35, z: 10 }, // Mid stairway
-    velocity: { x: 0, y: 1.2, z: 0 },
-    velocityVariance: { x: 0.6, y: 0.5, z: 0.6 },
+    rate: 12,
+    position: { x: -30.0, y: 46, z: 2.1 }, // Key 2 area
+    velocity: { x: 0, y: 1, z: 0 },
+    velocityVariance: { x: 0.6, y: 0.4, z: 0.6 },
   });
-  stairwellSmoke.spawn(world);
+  key2Smoke.spawn(world);
 
-  console.log(`💨 Spawned 3 atmospheric smoke/fog emitters throughout the castle`);
+  // Blue mystical fog near Key 3 (x:20.7, y:57.8, z:13.5)
+  const key3Smoke = new ParticleEmitter({
+    textureUri: 'particles/magic.png',
+    colorStart: { r: 100, g: 150, b: 255 }, // Blue mystical
+    colorEnd: { r: 50, g: 100, b: 200 },
+    opacityStart: 0.4,
+    opacityEnd: 0,
+    sizeStart: 2,
+    sizeEnd: 7,
+    lifetime: 6,
+    lifetimeVariance: 2,
+    rate: 12,
+    position: { x: 20.7, y: 58, z: 13.5 }, // Key 3 area
+    velocity: { x: 0, y: 1.2, z: 0 },
+    velocityVariance: { x: 0.5, y: 0.4, z: 0.5 },
+  });
+  key3Smoke.spawn(world);
+
+  // Golden/yellow victory beacon at win zone (x:4.4, y:21.8, z:-49.4)
+  const winZoneBeacon = new ParticleEmitter({
+    textureUri: 'particles/magic.png',
+    colorStart: { r: 255, g: 215, b: 100 }, // Golden yellow
+    colorEnd: { r: 200, g: 150, b: 50 },
+    opacityStart: 0.5,
+    opacityEnd: 0,
+    sizeStart: 3,
+    sizeEnd: 9,
+    lifetime: 8,
+    lifetimeVariance: 2,
+    rate: 18,
+    position: { x: 4.4, y: 22, z: -49.4 }, // Win zone - guides players to escape!
+    velocity: { x: 0, y: 1.5, z: 0 },
+    velocityVariance: { x: 0.7, y: 0.5, z: 0.7 },
+  });
+  winZoneBeacon.spawn(world);
+
+  console.log(`💨 Spawned 4 atmospheric particle effects: 3 near keys + 1 golden beacon at win zone`);
 }
 
 // ============================================================================
@@ -761,15 +851,40 @@ function catchPlayer(world: World, player: Player, zombie: Entity) {
 // ============================================================================
 
 function createEscapeDoorways(world: World) {
-  // Doorway near first key stairwell - players getting stuck at x:44.4, y:21.8, z:-18.7
-  // Create a 2-block wide, 3-block tall doorway opening
+  console.log(`🚪 Fixing stair gaps and creating escape routes...`);
+
+  // FIX 1: Fill in stair gaps where players fall through (x:46.1, y:30.8, z:-17.6)
+  // Add solid floor blocks around the problem stairs area
+  const stairGapFills = [
+    // Fill gaps in stairs near Key 1
+    { x: 45, y: 30, z: -18 },
+    { x: 46, y: 30, z: -18 },
+    { x: 47, y: 30, z: -18 },
+    { x: 45, y: 30, z: -17 },
+    { x: 46, y: 30, z: -17 },
+    { x: 47, y: 30, z: -17 },
+    { x: 45, y: 31, z: -18 },
+    { x: 46, y: 31, z: -18 },
+    { x: 47, y: 31, z: -18 },
+    { x: 45, y: 31, z: -17 },
+    { x: 46, y: 31, z: -17 },
+    { x: 47, y: 31, z: -17 },
+  ];
+
+  stairGapFills.forEach(pos => {
+    // Use block ID 5 (cobblestone) to fill gaps
+    world.chunkLattice.setBlock(pos, 5);
+  });
+
+  console.log(`✓ Filled ${stairGapFills.length} stair gaps to prevent falling through`);
+
+  // FIX 2: Escape doorway at lower level (for anyone already stuck)
+  // Doorway at y:22 level where players land when they fall
   const doorway1Center = { x: 44, y: 22, z: -19 };
 
-  console.log(`🚪 Creating escape doorway near first key stairwell...`);
-
   // Clear blocks for doorway (2 wide x 3 tall)
-  for (let dy = 0; dy < 3; dy++) {  // 3 blocks tall
-    for (let dx = 0; dx < 2; dx++) { // 2 blocks wide
+  for (let dy = 0; dy < 3; dy++) {
+    for (let dx = 0; dx < 2; dx++) {
       const blockPos = {
         x: doorway1Center.x + dx,
         y: doorway1Center.y + dy,
@@ -782,6 +897,25 @@ function createEscapeDoorways(world: World) {
   }
 
   console.log(`✓ Escape doorway created at x:${doorway1Center.x}, y:${doorway1Center.y}, z:${doorway1Center.z}`);
+
+  // FIX 3: Additional escape doorway on opposite wall
+  const doorway2Center = { x: 46, y: 22, z: -16 };
+
+  // Clear blocks for second doorway
+  for (let dy = 0; dy < 3; dy++) {
+    for (let dz = 0; dz < 2; dz++) {
+      const blockPos = {
+        x: doorway2Center.x,
+        y: doorway2Center.y + dy,
+        z: doorway2Center.z + dz
+      };
+
+      world.chunkLattice.setBlock(blockPos, 0);
+    }
+  }
+
+  console.log(`✓ Second escape doorway created at x:${doorway2Center.x}, y:${doorway2Center.y}, z:${doorway2Center.z}`);
+  console.log(`🏗️ Total fixes: filled stair gaps + 2 escape doorways`);
 }
 
 // ============================================================================
@@ -867,12 +1001,33 @@ function endGame(world: World, player: Player, won: boolean, message: string) {
   const state = getPlayerState(player);
   state.gameOver = true;
 
+  // Calculate final score
+  state.finalScore = calculateScore(state, won);
+
+  // Add to leaderboard
+  addToLeaderboard(player.username, state);
+
+  // Get top 10 for display
+  const topTen = getTopTenLeaderboard();
+
   if (won) {
-    world.chatManager.sendPlayerMessage(player, `🎉 ${message}`, '00FF00');
-    player.ui.sendData({ type: 'game-end', won: true, message });
+    world.chatManager.sendPlayerMessage(player, `🎉 ${message} | Score: ${state.finalScore}`, '00FF00');
+    player.ui.sendData({
+      type: 'game-end',
+      won: true,
+      message,
+      score: state.finalScore,
+      leaderboard: topTen
+    });
   } else {
-    world.chatManager.sendPlayerMessage(player, `💀 ${message}`, 'FF0000');
-    player.ui.sendData({ type: 'game-end', won: false, message });
+    world.chatManager.sendPlayerMessage(player, `💀 ${message} | Score: ${state.finalScore}`, 'FF0000');
+    player.ui.sendData({
+      type: 'game-end',
+      won: false,
+      message,
+      score: state.finalScore,
+      leaderboard: topTen
+    });
   }
 
   // Offer restart after delay

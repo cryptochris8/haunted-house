@@ -16,6 +16,16 @@
   <div class="end-content">
     <h1 id="end-title">Game Over</h1>
     <p id="end-message">The Warden claimed you...</p>
+    <p class="score-display" id="score-display">Your Score: <span id="final-score">0</span></p>
+
+    <!-- LEADERBOARD -->
+    <div class="leaderboard-container">
+      <h2 class="leaderboard-title">🏆 TOP 10 LEADERBOARD 🏆</h2>
+      <div class="leaderboard-list" id="leaderboard-list">
+        <!-- Leaderboard entries will be populated here -->
+      </div>
+    </div>
+
     <p class="restart-text">Restarting soon...</p>
   </div>
 </div>
@@ -160,11 +170,122 @@
     color: #ffaa00;
     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9);
     animation: pulse 1.5s infinite;
+    margin-top: 20px;
   }
 
   @keyframes pulse {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.5; }
+  }
+
+  /* ========== SCORE DISPLAY ========== */
+  .score-display {
+    font-size: 32px;
+    color: #ffd700;
+    text-shadow:
+      0 0 10px rgba(255, 215, 0, 0.8),
+      2px 2px 6px rgba(0, 0, 0, 0.9);
+    margin: 20px 0;
+    font-weight: bold;
+  }
+
+  #final-score {
+    color: #ffff00;
+    font-size: 40px;
+  }
+
+  /* ========== LEADERBOARD ========== */
+  .leaderboard-container {
+    margin: 30px 0;
+    padding: 20px;
+    background: rgba(0, 0, 0, 0.5);
+    border: 2px solid rgba(139, 0, 0, 0.6);
+    border-radius: 12px;
+    max-height: 400px;
+    overflow-y: auto;
+  }
+
+  .leaderboard-title {
+    font-size: 28px;
+    color: #ffd700;
+    text-shadow:
+      0 0 10px rgba(255, 215, 0, 1),
+      2px 2px 6px rgba(0, 0, 0, 0.9);
+    margin-bottom: 15px;
+    font-weight: bold;
+  }
+
+  .leaderboard-list {
+    text-align: left;
+  }
+
+  .leaderboard-entry {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    margin-bottom: 8px;
+    background: linear-gradient(to right, rgba(60, 0, 0, 0.8), rgba(40, 0, 0, 0.8));
+    border: 1px solid rgba(139, 0, 0, 0.4);
+    border-radius: 8px;
+    transition: all 0.2s;
+  }
+
+  .leaderboard-entry:hover {
+    background: linear-gradient(to right, rgba(80, 0, 0, 0.9), rgba(60, 0, 0, 0.9));
+    border-color: rgba(139, 0, 0, 0.6);
+    transform: translateX(4px);
+  }
+
+  .leaderboard-entry.rank-1 {
+    background: linear-gradient(to right, rgba(255, 215, 0, 0.3), rgba(218, 165, 32, 0.3));
+    border-color: rgba(255, 215, 0, 0.6);
+  }
+
+  .leaderboard-entry.rank-2 {
+    background: linear-gradient(to right, rgba(192, 192, 192, 0.3), rgba(169, 169, 169, 0.3));
+    border-color: rgba(192, 192, 192, 0.6);
+  }
+
+  .leaderboard-entry.rank-3 {
+    background: linear-gradient(to right, rgba(205, 127, 50, 0.3), rgba(184, 115, 51, 0.3));
+    border-color: rgba(205, 127, 50, 0.6);
+  }
+
+  .leaderboard-rank {
+    font-size: 24px;
+    font-weight: bold;
+    min-width: 40px;
+    color: #ffd700;
+    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.9);
+  }
+
+  .leaderboard-info {
+    flex: 1;
+    margin: 0 15px;
+  }
+
+  .leaderboard-name {
+    font-size: 18px;
+    font-weight: bold;
+    color: #ffffff;
+    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.9);
+    margin-bottom: 4px;
+  }
+
+  .leaderboard-details {
+    font-size: 14px;
+    color: #cccccc;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.9);
+  }
+
+  .leaderboard-score {
+    font-size: 22px;
+    font-weight: bold;
+    color: #ffff00;
+    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.9);
+    min-width: 80px;
+    text-align: right;
   }
 
   /* ========== MOBILE CONTROLS ========== */
@@ -237,6 +358,50 @@
     #end-message {
       font-size: 20px;
     }
+
+    .score-display {
+      font-size: 24px;
+    }
+
+    #final-score {
+      font-size: 32px;
+    }
+
+    .leaderboard-title {
+      font-size: 20px;
+    }
+
+    .leaderboard-container {
+      padding: 10px;
+      max-height: 300px;
+    }
+
+    .leaderboard-entry {
+      padding: 8px;
+    }
+
+    .leaderboard-rank {
+      font-size: 18px;
+      min-width: 30px;
+    }
+
+    .leaderboard-name {
+      font-size: 14px;
+    }
+
+    .leaderboard-details {
+      font-size: 11px;
+    }
+
+    .leaderboard-score {
+      font-size: 16px;
+      min-width: 60px;
+    }
+
+    .end-content {
+      max-width: 90vw;
+      padding: 20px;
+    }
   }
 </style>
 
@@ -288,6 +453,8 @@
       const gameEndScreen = document.getElementById('game-end');
       const endTitle = document.getElementById('end-title');
       const endMessage = document.getElementById('end-message');
+      const finalScore = document.getElementById('final-score');
+      const leaderboardList = document.getElementById('leaderboard-list');
 
       if (data.won) {
         endTitle.textContent = '🎉 YOU ESCAPED! 🎉';
@@ -297,6 +464,41 @@
         endTitle.textContent = '💀 GAME OVER 💀';
         endTitle.style.color = '#ff0000';
         endMessage.textContent = data.message;
+      }
+
+      // Display score
+      finalScore.textContent = data.score || 0;
+
+      // Populate leaderboard
+      leaderboardList.innerHTML = '';
+      if (data.leaderboard && data.leaderboard.length > 0) {
+        data.leaderboard.forEach((entry, index) => {
+          const rank = index + 1;
+          const rankClass = rank <= 3 ? `rank-${rank}` : '';
+
+          const entryDiv = document.createElement('div');
+          entryDiv.className = `leaderboard-entry ${rankClass}`;
+
+          // Format time
+          const minutes = Math.floor(entry.timeRemaining / 60);
+          const seconds = entry.timeRemaining % 60;
+          const timeStr = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+
+          entryDiv.innerHTML = `
+            <div class="leaderboard-rank">#${rank}</div>
+            <div class="leaderboard-info">
+              <div class="leaderboard-name">${entry.playerName}</div>
+              <div class="leaderboard-details">
+                🔑 ${entry.keysCollected}/3 | ❤️ ${entry.livesRemaining} | ⏱️ ${timeStr}
+              </div>
+            </div>
+            <div class="leaderboard-score">${entry.score}</div>
+          `;
+
+          leaderboardList.appendChild(entryDiv);
+        });
+      } else {
+        leaderboardList.innerHTML = '<p style="text-align: center; color: #888;">No scores yet!</p>';
       }
 
       gameEndScreen.style.display = 'flex';
