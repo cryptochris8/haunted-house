@@ -801,7 +801,7 @@ function spawnZombie(world: World) {
     // Using zombie model as the menacing Warden
     modelUri: 'models/npcs/zombie.gltf',
     modelScale: 1.5, // Larger for better visibility and intimidation
-    modelOffset: { x: 0, y: 1.0, z: 0 }, // Raise model 1 block to prevent floor clipping
+    modelOffset: { x: 0, y: 0.75, z: 0 }, // Raise model 0.75 blocks to prevent floor clipping
     modelEmissiveIntensity: 1.2, // Brighter glow so it's visible in dark castle
     tintColor: { r: 150, g: 255, b: 150 }, // Eerie green zombie glow
     rigidBodyOptions: {
