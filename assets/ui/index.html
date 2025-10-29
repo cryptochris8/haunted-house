@@ -1,4 +1,4 @@
-<!-- OPENING SCREEN -->
+<!-- OPENING SCREEN (Desktop/Browser Only) -->
 <div class="opening-screen" id="opening-screen">
   <div class="opening-content">
     <img src="{{CDN_ASSETS_URL}}/ui/logos/logo.png" alt="Haunted Castle" class="game-logo" />
@@ -89,6 +89,11 @@
     justify-content: center;
     z-index: 3000;
     animation: fadeIn 0.5s ease;
+  }
+
+  /* Hide opening screen on mobile - auto-start game instead */
+  body.mobile .opening-screen {
+    display: none !important;
   }
 
   .opening-content {
@@ -491,6 +496,11 @@
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
   }
 
+  /* Show HUD immediately on mobile */
+  body.mobile .haunted-hud {
+    display: flex !important;
+  }
+
   /* ========== RESPONSIVE ========== */
   @media (max-width: 768px) {
     .opening-content {
@@ -597,21 +607,45 @@
 </style>
 
 <script>
+  // ========== MOBILE DETECTION ==========
+  function isMobileDevice() {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+      || ('ontouchstart' in window)
+      || (navigator.maxTouchPoints > 0);
+  }
+
+  // Add mobile class to body if on mobile device
+  if (isMobileDevice()) {
+    document.body.classList.add('mobile');
+  }
+
   // ========== START GAME HANDLER ==========
   const startButton = document.getElementById('start-button');
   const openingScreen = document.getElementById('opening-screen');
   const gameHud = document.getElementById('game-hud');
 
-  startButton.addEventListener('click', () => {
-    // Hide opening screen
-    openingScreen.style.display = 'none';
+  // Desktop: Manual start with button
+  if (startButton) {
+    startButton.addEventListener('click', () => {
+      // Hide opening screen
+      openingScreen.style.display = 'none';
 
-    // Show HUD
-    gameHud.style.display = 'flex';
+      // Show HUD
+      gameHud.style.display = 'flex';
 
-    // Send start signal to server
-    hytopia.sendData({ type: 'start-game' });
-  });
+      // Send start signal to server
+      hytopia.sendData({ type: 'start-game' });
+    });
+  }
+
+  // Mobile: Auto-start game immediately
+  if (isMobileDevice()) {
+    console.log('Mobile device detected - auto-starting game');
+    // Send start signal to server immediately
+    setTimeout(() => {
+      hytopia.sendData({ type: 'start-game' });
+    }, 100); // Small delay to ensure Hytopia is ready
+  }
 
   // ========== HUD UPDATE HANDLER ==========
   hytopia.onData(data => {
@@ -710,11 +744,21 @@
 
       gameEndScreen.style.display = 'flex';
 
-      // Hide after 11 seconds and show opening screen again
+      // Hide after 11 seconds
       setTimeout(() => {
         gameEndScreen.style.display = 'none';
-        gameHud.style.display = 'none';
-        openingScreen.style.display = 'flex';
+
+        // Mobile: Show HUD and auto-restart
+        if (isMobileDevice()) {
+          gameHud.style.display = 'flex';
+          setTimeout(() => {
+            hytopia.sendData({ type: 'start-game' });
+          }, 100);
+        } else {
+          // Desktop: Show opening screen again
+          gameHud.style.display = 'none';
+          openingScreen.style.display = 'flex';
+        }
       }, 11000);
     }
   });

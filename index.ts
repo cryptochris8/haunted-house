@@ -284,7 +284,7 @@ startServer(async world => {
     // Load UI
     player.ui.load('ui/index.html');
 
-    // Send initial HUD data (but don't start timer yet)
+    // Send initial HUD data (but don't start timer yet - wait for 'start-game' event)
     updatePlayerHUD(player);
 
     // DEBUG: Show player position every 2 seconds
@@ -302,10 +302,10 @@ startServer(async world => {
       }
     }, 2000);
 
-    // Handle UI interactions
+    // Handle UI interactions (both desktop button click and mobile auto-start)
     player.ui.on(PlayerUIEvent.DATA, ({ data }) => {
       if (data.type === 'start-game') {
-        // Player clicked "Enter the Castle" button
+        // Player clicked "Enter the Castle" button OR mobile auto-started
         console.log(`${player.username} started the game`);
 
         // Welcome messages
@@ -1212,10 +1212,10 @@ async function endGame(world: World, player: Player, won: boolean, message: stri
         playerEntities[0].setPosition({ x: 13, y: 22, z: -56 });
       }
 
-      // Update HUD (timer will start when player clicks "Enter the Castle" again)
+      // Update HUD (timer will restart when player clicks button again or mobile auto-sends)
       updatePlayerHUD(player);
 
-      world.chatManager.sendPlayerMessage(player, 'Click "Enter the Castle" to play again!', '00FF00');
+      world.chatManager.sendPlayerMessage(player, 'Ready for another round? Click "Enter the Castle" to play again!', '00FF00');
     }, 3000);
   }, 7000);
 }
