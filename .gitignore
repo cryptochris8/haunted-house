@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+
+# IDE/Editor specific
+.claude/
+.cursor/
+.vscode/
+.idea/
+
+# Local configuration
+.mcp.json
+
+# Build artifacts
+*.zip
+dist/
+build/
+
+# OS specific
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*

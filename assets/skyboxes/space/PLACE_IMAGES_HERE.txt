@@ -1,0 +1,13 @@
+🌌 SPACE SKYBOX - Place 6 PNG files here:
+
+Required files (exact names):
+✅ +x.png
+✅ -x.png
+✅ +y.png
+✅ -y.png
+✅ +z.png
+✅ -z.png
+
+Download from: https://opengameart.org/content/space-skyboxes-0
+
+See: assets/skyboxes/DOWNLOAD_INSTRUCTIONS.md for detailed steps!
